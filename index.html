@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>moni:co - Gemma</title>
+    <style>
+      :root {
+        --primary-color: #2563eb; 
+        --accent-color: #ef4444; 
+        --bg-color: #f3f4f6;
+        --card-bg: #ffffff;
+        --text-main: #1f2937;
+        --text-sub: #6b7280;
+        --border-radius: 12px;
+        --input-height: 48px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* 初回ロード時のカバー画面 */
+      #loading-screen {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s;
+      }
+      .loader {
+        border: 4px solid #d1d5db;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 40px; height: 40px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+      header {
+        background: var(--card-bg);
+        padding: 12px 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0;
+        color: var(--primary-color);
+        font-weight: 800;
+      }
+      .badge {
+        font-size: 0.7rem;
+        background: #e0e7ff;
+        color: var(--primary-color);
+        padding: 4px 8px;
+        border-radius: 99px;
+        font-weight: bold;
+      }
+
+      main {
+        flex: 1;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        padding-bottom: 40px; 
+      }
+
+      .card {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px; 
+      }
+      
+      .video-wrapper {
+        position: relative;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 9 / 16;
+        max-width: calc(60vh * (9 / 16));
+        width: 100%;
+        margin: 0 auto; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      }
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scaleX(-1);
+      }
+
+      .gauge-container {
+        width: 100%;
+      }
+      .gauge-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--text-sub);
+        margin-bottom: 6px;
+      }
+      .gauge-bg {
+        height: 12px;
+        background: #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+      }
+      .gauge-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+        transition: width 0.3s ease;
+      }
+      .threshold-marker {
+        position: absolute;
+        top: 0; bottom: 0; width: 2px;
+        background: #000; left: 50%; opacity: 0.3;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      @media (min-width: 600px) {
+        .form-grid { grid-template-columns: 1fr 1fr; }
+        .full-width { grid-column: span 2; }
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-sub);
+        margin-bottom: 6px;
+      }
+      .input-group input, .input-group select {
+        width: 100%;
+        height: var(--input-height);
+        padding: 0 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: #f9fafb;
+      }
+      
+      .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
+        width: 100%;
+      }
+      
+      button {
+        width: 100%;
+        min-height: 54px; 
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.1s;
+      }
+      button:active { transform: scale(0.98); }
+      
+      #cameraButton { background: #4b5563; color: white; } 
+      #startButton { background: var(--primary-color); color: white; }
+      #stopButton { background: var(--accent-color); color: white; }
+      #testButton { background: #fff; border: 2px solid #e5e7eb; color: var(--text-main); }
+
+      .status-box {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        border-left: 4px solid var(--primary-color);
+        line-height: 1.4;
+        transition: background 0.3s;
+      }
+
+      .status-error {
+        background: #7f1d1d !important; 
+        color: #fee2e2 !important;     
+        border-left-color: #ef4444 !important;
+        font-weight: bold;
+      }
+
+      .pulse {
+        animation: pulse-animation 2s infinite;
+      }
+      @keyframes pulse-animation {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+
+    </style>
+  </head>
+  <body>
+
+    <div id="loading-screen">
+      <div class="loader"></div>
+      <div>システム起動中...</div>
+    </div>
+
+    <header>
+      <h1>moni:co</h1>
+      <span class="badge">Research Ed.</span>
+    </header>
+
+    <main>
+      <div class="card">
+        <div class="video-wrapper" id="videoWrapper">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="captureCanvas" width="640" height="480" style="display: none"></canvas>
+        </div>
+
+        <div class="gauge-container">
+          <div class="gauge-label">
+            <span>Concentration Loss (集中低下度)</span>
+            <span id="scoreValue">0%</span>
+          </div>
+          <div class="gauge-bg">
+            <div class="threshold-marker"></div>
+            <div class="gauge-fill" id="gaugeFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div class="input-group full-width">
+            <label for="videoSource">使用カメラ</label>
+            <select id="videoSource"></select>
+          </div>
+
+          <div class="input-group">
+            <label for="nameInput">名前 (Name)</label>
+            <input type="text" id="nameInput" value="" placeholder="例: はなこ">
+          </div>
+          
+          <div class="input-group">
+            <label for="goalInput">作業目的 (Goal)</label>
+            <input type="text" id="goalInput" value="" placeholder="例: 卒業論文の執筆">
+          </div>
+
+          <div class="input-group">
+            <label for="toleranceInput">猶予時間 (Seconds to Trigger)</label>
+            <input type="number" id="toleranceInput" value="10" min="5">
+            <span style="font-size:0.7rem; color:#9ca3af; display:block; margin-top:4px;">※この秒数以上、低下スコアが50%を超えるとGeminiが起動します</span>
+          </div>
+
+          <div class="input-group">
+            <label for="encourageInput">応援間隔 (分)</label>
+            <input type="number" id="encourageInput" value="15" min="5">
+            <span style="font-size:0.7rem; color:#9ca3af; display:block; margin-top:4px;">※集中していたら褒める間隔</span>
+          </div>
+
+        </div>
+
+        <div class="action-buttons">
+          <button id="cameraButton">📸 カメラ起動・準備 (Check Camera)</button>           
+          <button id="startButton" style="display: none;">🔴 実況開始 (Start)</button>           
+          <button id="stopButton" style="display: none;">⬛ 実況停止 (Stop)</button>
+          <button id="testButton">💬 手動テスト (Manual Test)</button>
+        </div>
+
+      </div>
+
+      <div class="status-box" id="status">
+        Ready. カメラを選択してStartを押してください。
+      </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
+
+    <script>
+      // 起動アニメーション
+      window.onload = () => {
+         const loader = document.getElementById("loading-screen");
+         if(loader) {
+            loader.style.opacity = "0";
+            setTimeout(() => loader.style.display = "none", 500);
+         }
+      };
+
+      // -----------------------------------------------------
+      // UI関連
+      // -----------------------------------------------------
+      const gaugeFill = document.getElementById('gaugeFill');
+      const scoreValue = document.getElementById('scoreValue');
+      const videoWrapper = document.getElementById('videoWrapper');
+
+      function updateGauge(score) {
+          const percentage = Math.min(Math.max(score, 0), 100);
+          gaugeFill.style.width = `${percentage}%`;
+          scoreValue.textContent = `${percentage.toFixed(1)}%`;
+          
+          if (percentage > LAPSE_THRESHOLD) {
+              videoWrapper.style.border = "3px solid var(--accent-color)";
+          } else {
+              videoWrapper.style.border = "none";
+          }
+      }
+
+      function showError(msg) {
+          status.textContent = "⛔ " + msg;
+          status.classList.add("status-error"); 
+          status.classList.remove("pulse");
+      }
+      
+      function clearError() {
+          status.classList.remove("status-error"); 
+      }
+
+      // -----------------------------------------------------
+      // ロジック
+      // -----------------------------------------------------
+      window.onerror = function(msg) { 
+          const loader = document.getElementById("loading-screen");
+          if(loader) loader.style.display = "none";
+          showError("System Error: " + msg); 
+      };
+
+      const status = document.getElementById("status");
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("captureCanvas");
+      
+      const cameraButton = document.getElementById("cameraButton");
+      const startButton = document.getElementById("startButton");
+      const stopButton = document.getElementById("stopButton");
+      const testButton = document.getElementById("testButton");
+      
+      const videoSource = document.getElementById("videoSource");
+      const nameInput = document.getElementById("nameInput");
+      const goalInput = document.getElementById("goalInput");
+      const toleranceInput = document.getElementById("toleranceInput");
+      const encourageInput = document.getElementById("encourageInput");
+
+      // AIモデル変数
+      let detector;       
+      let objectDetector; 
+      
+      let selectedCameraId, localAnalysisIntervalId = null; 
+      const LOCAL_LOOP_MS = 100; 
+
+      let isCalibrating = false;
+      const CALIBRATION_DURATION_MS = 15000; 
+      let calibrationStartTime = 0;
+      let calibrationData = { ear: [], pitch: [], yaw: [] };
+      let baseline = { earMean: 0, earStd: 0, pitchMean: 0, pitchStd: 0, yawMean: 0, yawStd: 0 };
+
+      let lapseScore = 0;         
+      const LAPSE_THRESHOLD = 50; 
+      let lapseStartTime = null;  
+      let isTalking = false;      
+      
+      // ★修正箇所: 重複定義を削除しました
+      
+      let lastPitch=0, lastYaw=0, lastSeenTime=0;
+      let previousImageData = null;  
+
+      // 応援タイマー変数
+      let lastEncouragementTime = 0;
+      let currentEncourageInterval = 0; 
+      
+      const TIME_RETRY  =  1 * 60 * 1000; 
+
+      // ★追加: AI呼び出しのクールダウン管理用
+      let lastAlertTime = 0;
+      const ALERT_COOLDOWN_MS = 60 * 1000; // 1分間は連続で怒られない
+
+      // ★追加: 基準の自動追従レート (0.1%ずつ今の姿勢に近づける)
+      const ADAPTATION_RATE = 0.001; 
+
+      const Z_THRESHOLD_PITCH = 2.5; // 元 2.5
+      const Z_THRESHOLD_EAR = 1.5;   // 元 1.5
+
+      cameraButton.addEventListener("click", prepareSystem); 
+      startButton.addEventListener("click", startMonitoring); 
+      stopButton.addEventListener("click", stopCommentary); 
+      testButton.addEventListener("click", () => captureAndCommentary(true)); 
+      
+      videoSource.addEventListener("change", async (e) => { 
+          selectedCameraId = e.target.value; 
+          if (video.srcObject) {
+              status.textContent = "カメラ切り替え中...";
+              await startCameraStream();
+              status.textContent = "カメラを切り替えました。";
+          }
+      });
+
+      loadDevices();
+
+      async function loadDevices() {
+          try {
+              await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              const devices = await navigator.mediaDevices.enumerateDevices();
+              videoSource.innerHTML = "";
+              devices.forEach(device => {
+                  if (device.kind === 'videoinput') {
+                      const option = document.createElement('option');
+                      option.value = device.deviceId;
+                      option.text = device.label || `Camera ${videoSource.length + 1}`;
+                      videoSource.appendChild(option);
+                  }
+              });
+              if (videoSource.options.length > 0) {
+                  selectedCameraId = videoSource.value;
+              } else {
+                  showError("カメラが見つかりません。");
+              }
+          } catch (err) {
+              console.error(err);
+              showError("カメラアクセスエラー: " + err.message);
+          }
+      }
+
+      async function prepareSystem() {
+          clearError(); 
+          cameraButton.disabled = true;
+          status.textContent = "システム起動中 (AIモデル読み込み)...";
+          status.classList.add("pulse");
+
+          try {
+              await startCameraStream();
+              
+              try {
+                  window.speechSynthesis.getVoices(); 
+                  const dummy = new SpeechSynthesisUtterance(" ");
+                  dummy.volume = 0; window.speechSynthesis.speak(dummy);
+              } catch (e) {}
+
+              const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+              detector = await faceLandmarksDetection.createDetector(model, {
+                  runtime: 'mediapipe',
+                  solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
+              });
+
+              status.textContent = "スマホ検知AIをロード中...";
+              objectDetector = await cocoSsd.load();
+
+              status.textContent = "準備完了！画角を調整して、良い姿勢で「実況開始」を押してください。";
+              status.classList.remove("pulse");
+              
+              cameraButton.style.display = 'none';
+              startButton.style.display = 'block'; 
+
+          } catch(err){
+              console.error(err);
+              showError("起動エラー: " + err.message);
+              cameraButton.disabled = false;
+          }
+      }
+
+      async function startCameraStream(){
+          if (video.srcObject) {
+              const tracks = video.srcObject.getTracks();
+              tracks.forEach(track => track.stop());
+              video.srcObject = null; 
+          }
+
+          const constraints = {
+              video: {
+                  deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+                  width: { ideal: 720 },
+                  height: { ideal: 1280 }
+              }
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          video.srcObject = stream;
+      }
+
+      function startMonitoring() {
+          clearError(); 
+          const userName = nameInput.value.trim();
+          const userGoal = goalInput.value.trim();
+
+          if (!userName || !userGoal) {
+              showError("名前と作業目的は必須です！");
+              window.alert("【入力エラー】\n名前と作業目的を入力してください！");
+              return;
+          }
+
+          if (!detector || !objectDetector) {
+              showError("AIモデル未ロード。リロードしてください。");
+              return;
+          }
+
+          speakCalibrationStart();
+
+          isCalibrating = true;
+          calibrationStartTime = Date.now();
+          calibrationData = { ear: [], pitch: [], yaw: [] }; 
+          lapseScore = 0;
+          updateGauge(0);
+          
+          if (localAnalysisIntervalId) clearInterval(localAnalysisIntervalId);
+          localAnalysisIntervalId = setInterval(runLocalAnalysis, LOCAL_LOOP_MS);
+
+          startButton.style.display = 'none';
+          stopButton.style.display = 'block';
+      }
+      
+      function stopCommentary() {
+          clearError();
+          if (localAnalysisIntervalId) {
+              clearInterval(localAnalysisIntervalId);
+              localAnalysisIntervalId = null;
+          }
+          status.textContent = "実況を停止しました。";
+          status.classList.remove("pulse");
+          videoWrapper.style.border = "none";
+          updateGauge(0);
+          
+          stopButton.style.display = 'none';
+          startButton.style.display = 'block'; 
+          status.textContent = "実況停止。再度「実況開始」で再開できます。";
+      }
+      //AIに写真を送るとこ
+      async function captureAndCommentary(isManual = false, triggerReason = "") {
+          const userName = nameInput.value.trim();
+          const userGoal = goalInput.value.trim();
+          if (!userName || !userGoal) {
+              showError("名前と目的が必要です");
+              window.alert("【入力エラー】\n名前と作業目的を入力してください！");
+              return;
+          }
+
+          status.textContent = (isManual ? "Manual Test" : "Auto Trigger") + ": Geminiに分析を依頼中...";
+          status.classList.add("pulse"); 
+
+          const context = canvas.getContext("2d");
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const data = canvas.toDataURL("image/jpeg", 0.5).split(",")[1];
+
+          const imagePayload = {
+              currentImage: { data: data, mime_type: "image/jpeg" },
+              previousImage: null, 
+              name: userName,
+              goal: userGoal,
+              reason: triggerReason 
+          };
+
+          google.script.run
+              .withSuccessHandler(commentaryReceived)
+              .withFailureHandler(err => {
+                  showError("GAS Error: " + err.message); 
+                  isTalking = false; 
+              })
+              .describeImage(imagePayload);
+      }
+
+      function commentaryReceived(data){
+          status.classList.remove("pulse"); 
+
+          if (!data || !data.parts) {
+             showError("Geminiからの応答が空でした。"); 
+             isTalking = false;
+             return;
+          }
+
+          const fullText = data.parts[0].text.trim();
+          const lines = fullText.split('\n');
+          const commentaryText = lines[lines.length - 1].trim(); 
+
+          const utterance = setupSpeechUtterance(commentaryText);
+          window.speechSynthesis.speak(utterance);
+          
+          status.textContent = "Gemini: " + commentaryText;
+          
+          setTimeout(() => { isTalking = false; }, 5000); 
+      }
+      //AIの生成テキストを音声に
+      function setupSpeechUtterance(text) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "ja-JP";
+          utterance.rate = 1.3; 
+
+          const voices = window.speechSynthesis.getVoices();
+          const preferred = ["Microsoft Sayaka", "Google 日本語", "Kyoko"];
+          let selectedVoice = null;
+          for (const name of preferred) {
+             selectedVoice = voices.find(v => v.name.includes(name));
+             if (selectedVoice) break;
+          }
+          if (selectedVoice) utterance.voice = selectedVoice;
+          return utterance;
+      }
+
+      function speakCalibrationStart() {
+          const text = "集中力選手権に備え、15秒間あなたの姿勢を学習します。リラックスして、普段通り作業してください。";
+          const u = setupSpeechUtterance(text);
+          window.speechSynthesis.speak(u);
+          status.textContent = "学習開始: " + text;
+      }
+
+      function speakChampionshipStart(userName, userGoal) {
+          const text = `さあ、始まりました、集中力選手権！${userName}選手、数多の誘惑に打ち勝ち、${userGoal}という目標を達成できるのか！？`;
+          const u = setupSpeechUtterance(text);
+          u.rate = 1.2; 
+          window.speechSynthesis.speak(u);
+          status.textContent = "大会開始: " + text;
+
+          // ★追加: 開始ログをサーバーに送る
+          google.script.run.logSessionStart(userName, userGoal, text);
+      }
+
+      function checkEncouragement(now, userName) {
+          if (isTalking || isCalibrating) return;
+
+          if (now - lastEncouragementTime > currentEncourageInterval) {
+              
+              if (lapseScore < 50) { // 条件緩和(50以下ならOK)
+                  console.log("応援条件クリア！");
+                  isTalking = true;
+                  status.textContent = "Geminiが応援コメントを考えています...";
+                  
+                  const totalMinutes = Math.floor((now - calibrationStartTime) / 60000);
+                  const userGoal = goalInput.value.trim();
+
+                  google.script.run
+                    .withSuccessHandler((text) => {
+                        const u = setupSpeechUtterance(text);
+                        window.speechSynthesis.speak(u);
+                        status.textContent = "応援: " + text;
+                        setTimeout(() => { isTalking = false; }, 5000);
+                    })
+                    .withFailureHandler((err) => {
+                        console.error(err); isTalking = false;
+                    })
+                    .getEncouragement(userName, userGoal, totalMinutes);
+
+                  // 成功時: ユーザー設定値をそのままセット
+                  const settingMin = parseInt(encourageInput.value);
+                  currentEncourageInterval = settingMin * 60 * 1000; 
+              } else {
+                  const msg = `応援スキップ: 集中スコア(${lapseScore.toFixed(1)})が高いため見送りました。1分後に再判定します。`;
+                  status.textContent = msg;
+                  console.log(msg);
+                  currentEncourageInterval = TIME_RETRY;
+              }
+
+              lastEncouragementTime = now;
+          }
+      }
+
+      function faceAngles(keypoints){
+          const nose = keypoints[1];
+          const leftEye = keypoints[33];
+          const rightEye = keypoints[263];
+          const eyeX = (leftEye.x + rightEye.x) / 2;
+          const eyeY = (leftEye.y + rightEye.y) / 2;
+          const eyeZ = (leftEye.z + rightEye.z) / 2;
+          const dx = nose.x - eyeX;
+          const dy = nose.y - eyeY;
+          const dz = nose.z - eyeZ;
+          return {
+              pitch: Math.atan2(dy, dz) * (180 / Math.PI),
+              yaw: Math.atan2(dx, dz) * (180 / Math.PI)
+          };
+      }
+
+      const LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144];
+      const RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380];
+
+      async function runLocalAnalysis() {
+          if (!detector || !video || !objectDetector) return;
+
+          try {
+              const objects = await objectDetector.detect(video);
+              const isPhoneDetected = objects.some(obj => obj.class === 'cell phone' || obj.class === 'mobile phone');
+
+              const faces = await detector.estimateFaces(video);
+              const now = Date.now();
+
+              if (faces.length > 0) {
+                  const keypoints = faces[0].keypoints;
+                  const leftEAR = calculateEAR(keypoints, LEFT_EYE_INDICES);
+                  const rightEAR = calculateEAR(keypoints, RIGHT_EYE_INDICES);
+                  const avgEAR = (leftEAR + rightEAR) / 2.0;
+                  const { pitch, yaw } = faceAngles(keypoints);
+
+                  lastPitch = pitch; lastYaw = yaw; lastSeenTime = now;
+
+                  if (isCalibrating) {
+                      calibrationData.ear.push(avgEAR);
+                      calibrationData.pitch.push(pitch);
+                      calibrationData.yaw.push(yaw);
+                      
+                      const elapsed = now - calibrationStartTime;
+                      const remaining = Math.ceil((CALIBRATION_DURATION_MS - elapsed) / 1000);
+                      status.textContent = `キャリブレーション中... (残り${remaining}秒)`;
+                      
+                      if (elapsed > CALIBRATION_DURATION_MS) finishCalibration();
+                  } else {
+                      checkConcentration(pitch, yaw, avgEAR, isPhoneDetected);
+                      checkEncouragement(now, nameInput.value.trim());
+                  }
+              } else {
+                  if (!isCalibrating && isPhoneDetected) {
+                       checkConcentration(0, 0, 0.3, true);
+                  } else {
+                      handleFaceLost(now);
+                  }
+              }
+          } catch (e) { console.error("Loop Error:", e); }
+      }
+
+      function finishCalibration() {
+          if (calibrationData.ear.length < 10) { 
+              baseline = { earMean: 0.3, earStd: 0.05, pitchMean: 0, pitchStd: 10, yawMean: 0, yawStd: 10 };
+              status.textContent = "学習完了 (データ不足のため標準値)";
+          } else {
+              baseline.earMean = calculateStats(calibrationData.ear).mean;
+              baseline.earStd  = calculateStats(calibrationData.ear).std;
+              const pStats = calculateStats(calibrationData.pitch);
+              baseline.pitchMean = pStats.mean;
+              baseline.pitchStd  = pStats.std;
+              const yStats = calculateStats(calibrationData.yaw);
+              baseline.yawMean = yStats.mean;
+              baseline.yawStd  = yStats.std;
+          }
+          
+          isCalibrating = false; 
+
+          // ★タイマー初期設定: ユーザー設定値をセット
+          lastEncouragementTime = Date.now();
+          const settingMin = parseInt(encourageInput.value);
+          currentEncourageInterval = settingMin * 60 * 1000; 
+
+          const userName = nameInput.value.trim();
+          const userGoal = goalInput.value.trim();
+          speakChampionshipStart(userName, userGoal);
+      }
+
+      function checkConcentration(pitch, yaw, avgEAR, isPhoneDetected) {
+          // Zスコア計算 (偏差値のようなもの)
+          const pitchZ = calculateZScore(pitch, baseline.pitchMean, baseline.pitchStd, 5.0); 
+          const yawDist = Math.abs(yaw - baseline.yawMean); 
+          const yawZ = yawDist / Math.max(baseline.yawStd, 5.0);
+          
+          const earDiff = baseline.earMean - avgEAR;
+          const earZ = earDiff / Math.max(baseline.earStd, 0.02); 
+
+          const ABSOLUTE_CLOSE_LIMIT = 0.12; // 完全に目を閉じている判定
+
+          let addedScore = 0;
+          let reasons = [];
+          
+          // --- スコア計算ロジック ---
+          if (isPhoneDetected) {
+              addedScore += 50.0; 
+              reasons.push("スマホ検知");
+          }
+
+          if (pitchZ > Z_THRESHOLD_PITCH) { addedScore += 2.0; reasons.push("姿勢崩れ"); }
+          if (yawZ > Z_THRESHOLD_PITCH) { addedScore += 1.5; reasons.push("よそ見"); }
+          
+          if (earZ > Z_THRESHOLD_EAR || avgEAR < ABSOLUTE_CLOSE_LIMIT) { 
+              addedScore += 5.0; 
+              reasons.push("目を閉じている"); 
+          }
+
+          // --- スコアの増減 ---
+          if (addedScore > 0) { 
+              lapseScore += addedScore; 
+              if (lapseScore > 100) lapseScore = 100;
+          } else { 
+              lapseScore -= 5.0; // 回復速度
+          } 
+
+          if (lapseScore < 0) lapseScore = 0;
+          updateGauge(lapseScore); // ゲージ更新
+
+          // ★機能追加: 基準の自動追従 (Dynamic Baseline)
+          // 「スマホを見ておらず」かつ「スコアが低い(集中している)」場合のみ、
+          // 現在の姿勢を「新しい基準」として少しずつ取り入れる。
+          if (!isPhoneDetected && lapseScore < 30) {
+              baseline.pitchMean = baseline.pitchMean * (1 - ADAPTATION_RATE) + pitch * ADAPTATION_RATE;
+              baseline.yawMean   = baseline.yawMean   * (1 - ADAPTATION_RATE) + yaw   * ADAPTATION_RATE;
+              baseline.earMean   = baseline.earMean   * (1 - ADAPTATION_RATE) + avgEAR * ADAPTATION_RATE;
+              // ※これにより、座り直しても徐々にそこが「ゼロ地点」になります。
+          }
+
+          // --- アラート判定とAI呼び出し ---
+          let msg = `集中低下スコア: ${lapseScore.toFixed(1)}`;
+          if (reasons.length > 0) msg += ` ⚠️検知: ${reasons.join(",")}`;
+
+          const now = Date.now();
+
+          if (lapseScore > LAPSE_THRESHOLD) {
+              if (lapseStartTime === null) lapseStartTime = now;
+              const duration = now - lapseStartTime;
+              const toleranceMs = parseInt(toleranceInput.value) * 1000;
+              msg += ` (継続${(duration/1000).toFixed(1)}秒)`;
+
+              // ★変更: クールダウン中(lastAlertTimeから1分以内)ならAIを呼ばない
+              const isCoolingDown = (now - lastAlertTime < ALERT_COOLDOWN_MS);
+
+              if (duration > toleranceMs && !isTalking) {
+                  if (isCoolingDown) {
+                      // クールダウン中はログだけ出してスルー
+                      console.log("AI呼び出しスキップ: クールダウン中");
+                      msg += " [Cooldown]";
+                  } else {
+                      // AI呼び出し実行
+                      const reasonText = reasons.length > 0 ? reasons.join("、") : "集中力の低下";
+                      status.textContent = `⚠️ Gemini呼び出し中: ${reasonText}...`;
+                      isTalking = true;
+                      lastAlertTime = now; // ★最終アラート時間を更新
+                      
+                      captureAndCommentary(false, reasonText);
+                      
+                      lapseScore = 0; // スコアをリセットしてあげる
+                      lapseStartTime = null;
+                      return;
+                  }
+              }
+          } else {
+              lapseStartTime = null;
+          }
+          status.textContent = msg;
+      }
+
+      function handleFaceLost(now) {
+          if (now - lastSeenTime < 5000) {
+              if (!isCalibrating) lapseScore += 0.5;
+              updateGauge(lapseScore);
+              status.textContent = "顔を認識できません (スコア上昇中)";
+          } else {
+              status.textContent = "離席判定 (Face Lost)";
+          }
+      }
+
+      function getDistance(p1, p2) { return Math.sqrt(Math.pow(p1.x-p2.x,2)+Math.pow(p1.y-p2.y,2)); }
+      function calculateEAR(keypoints, indices) {
+          const p = indices.map(i => keypoints[i]);
+          return (getDistance(p[1],p[5])+getDistance(p[2],p[4])) / (2.0*getDistance(p[0],p[3]));
+      }
+      function calculateStats(arr) {
+          const n = arr.length; if(n===0)return{mean:0,std:0};
+          const mean = arr.reduce((a,b)=>a+b)/n;
+          const v = arr.reduce((a,b)=>a+Math.pow(b-mean,2),0)/n;
+          return {mean:mean, std:Math.sqrt(v)};
+      }
+      function calculateZScore(val, mean, std, minStd = 0.1) { 
+          return (val - mean) / Math.max(std, minStd); 
+      }
+    </script>
+  </body>
+</html>
