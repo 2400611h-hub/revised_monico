@@ -242,6 +242,12 @@
       <div class="loader"></div>
       <div>システム起動中...</div>
     </div>
+    
+    <div id="settings">
+      <input type="text" id="gasUrl" placeholder="自分のGAS URLを入力">
+      <button onclick="saveSettings()">設定保存</button>
+    </div>
+    
 
     <header>
       <h1>moni:co</h1>
@@ -562,12 +568,20 @@
           startButton.style.display = 'block'; 
           status.textContent = "実況停止。再度「実況開始」で再開できます。";
       }
+
+      function saveSettings() {
+        const url = document.getElementById("gasUrl").value;
+        localStorage.setItem("myGasUrl", url); // ブラウザに保存
+        alert("設定しました！");
+      }
+      
       //AIに写真を送るとこ
       async function captureAndCommentary(isManual = false, triggerReason = "") {
+          const GAS_URL = localStorage.getItem("myGasUrl");
           const userName = nameInput.value.trim();
           const userGoal = goalInput.value.trim();
-          if (!userName || !userGoal) {
-              showError("名前と目的が必要です");
+          if (!userName || !userGoal||!GAS_URL) {
+              showError("名前と目的,GAS_URLが必要です");
               window.alert("【入力エラー】\n名前と作業目的を入力してください！");
               return;
           }
@@ -587,7 +601,6 @@
               reason: triggerReason 
           };
 
-          const GAS_URL = "your GAS_URL";
           fetch(GAS_URL, {
           method: "POST",
           mode: "cors",
