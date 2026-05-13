@@ -1,7 +1,6 @@
 // ==========================================
 // 設定エリア
 // ==========================================
-const LOG_SHEET_ID = '1rGI0HuAoIxAVFOzlTjY4sHqp954ugt3hs5mMDPgmsgM'; 
 const ENABLE_LOGGING = true; 
 
 function callGemini(promptText, base64Image = null) {
@@ -52,14 +51,29 @@ function callGemini(promptText, base64Image = null) {
   return json.candidates[0];
 }
 
-/**
- * 【テスト用】写真と指示を別々に送るテスト
- */
-function testWorkWithPhoto() {
-  const myPrompt = "この写真に写っている人の集中度を、プロの実況者っぽく解説して！";
-  const myImage = "ここにBase64文字列が入るイメージ"; 
-  
-  // 関数を呼ぶときは、(プロンプト, 画像) の順番で渡すだけ
-  const result = callGemini(myPrompt, myImage);
-  console.log(result.content.parts[0].text);
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    
+    // プロンプトを作成（ユーザー名や目標を組み込むとより面白いです）
+    const prompt = `${data.name}さんが「${data.goal}」を頑張っています。
+この写真に写っている人の状況を、プロの実況者っぽく短く解説して！
+理由：${data.reason || '定期巡回'}`;
+
+    // --- 修正後の doPost の最後 ---
+    const response = callGemini(prompt, data.currentImage.data);
+    
+    // candidates[0] そのものではなく、その中の「content」だけを返す
+    // これで HTML側の data.parts[0].text が有効になります
+    const result = response.content; 
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    // エラーが起きた時に原因をブラウザに返す
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: err.message,
+      parts: [{ text: "エラーが発生しました。詳細はGASのログを確認してください。" }] 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
