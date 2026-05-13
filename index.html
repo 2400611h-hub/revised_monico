@@ -587,13 +587,21 @@
               reason: triggerReason 
           };
 
-          google.script.run
-              .withSuccessHandler(commentaryReceived)
-              .withFailureHandler(err => {
-                  showError("GAS Error: " + err.message); 
-                  isTalking = false; 
-              })
-              .describeImage(imagePayload);
+          const GAS_URL = "your GAS_URL";
+          fetch(GAS_URL, {
+          method: "POST",
+          mode: "cors",
+          redirect: "follow",
+          body: JSON.stringify(imagePayload),
+          })
+          .then(response => response.json())
+          .then(data => {
+          commentaryReceived(data); // 元の成功時処理を呼ぶ
+          })
+          .catch(err => {
+          showError("Fetch Error: " + err.message);
+          isTalking = false;
+         });
       }
 
       function commentaryReceived(data){
