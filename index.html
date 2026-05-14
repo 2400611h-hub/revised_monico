@@ -566,11 +566,11 @@
       }
 
       // GAS URLは以下に固定値として設定
-      const FIXED_GAS_URL = "https://script.google.com/macros/d/YOUR_SCRIPT_ID/usercallable"; // ★ここにGAS URLを入力してください
+      const FIXED_GAS_URL = "https://script.google.com/macros/s/AKfycbzaRoyfY0bIX_UTCiyZmY29z_YEBh731j8da1a_4iIP7TqzS06-_esMEAgW6GouA5u6JA/exec"; // ★ここにGAS URLを入力してください
       
       //AIに写真を送るとこ
       async function captureAndCommentary(isManual = false, triggerReason = "") {
-          const GAS_URL = https://script.google.com/macros/s/AKfycbzaRoyfY0bIX_UTCiyZmY29z_YEBh731j8da1a_4iIP7TqzS06-_esMEAgW6GouA5u6JA/exec;
+          const GAS_URL = FIXED_GAS_URL;
           const userName = nameInput.value.trim();
           const userGoal = goalInput.value.trim();
           if (!userName || !userGoal) {
