@@ -243,10 +243,6 @@
       <div>システム起動中...</div>
     </div>
     
-    <div id="settings">
-      <input type="text" id="gasUrl" placeholder="自分のGAS URLを入力">
-      <button onclick="saveSettings()">設定保存</button>
-    </div>
     
 
     <header>
@@ -569,21 +565,14 @@
           status.textContent = "実況停止。再度「実況開始」で再開できます。";
       }
 
-      function saveSettings() {
-        const url = document.getElementById("gasUrl").value;
-        localStorage.setItem("myGasUrl", url); // ブラウザに保存
-        alert("設定しました！");
-      }
+      // GAS URLは以下に固定値として設定
+      const FIXED_GAS_URL = "https://script.google.com/macros/d/YOUR_SCRIPT_ID/usercallable"; // ★ここにGAS URLを入力してください
       
       //AIに写真を送るとこ
       async function captureAndCommentary(isManual = false, triggerReason = "") {
-          const GAS_URL = localStorage.getItem("myGasUrl");
+          const GAS_URL = https://script.google.com/macros/s/AKfycbzaRoyfY0bIX_UTCiyZmY29z_YEBh731j8da1a_4iIP7TqzS06-_esMEAgW6GouA5u6JA/exec;
           const userName = nameInput.value.trim();
           const userGoal = goalInput.value.trim();
-          if (!GAS_URL || !GAS_URL.startsWith("https")) {
-              alert("GASのURLが正しく設定されていません！設定画面を確認してください。");
-              return;
-          }
           if (!userName || !userGoal) {
               showError("名前と目的が必要です");
               window.alert("【入力エラー】\n名前と作業目的を入力してください！");
