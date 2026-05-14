@@ -580,8 +580,12 @@
           const GAS_URL = localStorage.getItem("myGasUrl");
           const userName = nameInput.value.trim();
           const userGoal = goalInput.value.trim();
-          if (!userName || !userGoal||!GAS_URL) {
-              showError("名前と目的,GAS_URLが必要です");
+          if (!GAS_URL || !GAS_URL.startsWith("https")) {
+              alert("GASのURLが正しく設定されていません！設定画面を確認してください。");
+              return;
+          }
+          if (!userName || !userGoal) {
+              showError("名前と目的が必要です");
               window.alert("【入力エラー】\n名前と作業目的を入力してください！");
               return;
           }
@@ -607,16 +611,24 @@
           redirect: "follow",
           body: JSON.stringify(imagePayload),
           })
-          .then(response => response.json())
+          .then(response => {
+          // レスポンスがJSONじゃない（HTMLとかが返ってきた）場合に備える
+          const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+              throw new TypeError("サーバーからJSONではないデータが返ってきました！(権限エラーの可能性あり)");
+            }
+          return response.json();
+          })
           .then(data => {
           commentaryReceived(data); // 元の成功時処理を呼ぶ
           })
           .catch(err => {
+          // エラー内容をアラートで出す（スマホ確認用）
+          alert("通信失敗: " + err.message);
           showError("Fetch Error: " + err.message);
           isTalking = false;
-         });
-      }
-
+          });
+          
       function commentaryReceived(data){
           status.classList.remove("pulse"); 
 
