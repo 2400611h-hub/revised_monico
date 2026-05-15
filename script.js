@@ -1,66 +1,121 @@
-// GASの「ウェブアプリとして公開」した時のURLを入力
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxBL_1yA0QxabzrLY4xHfXanUiJoYLRYoN0j8le8IVc75nEyn5y0w4ag-1iKblNvwBJVw/exec";
+// ==========================================
+// 設定エリア
+// ==========================================
+const ENABLE_LOGGING = true; 
+// 保存したいスプレッドシートのID（URLの /d/ と /edit の間の文字列）を記入してください
+// 空のままでも、スクリプトに紐づくシートがあればそこに書き込みます
+const SPREADSHEET_ID = "1fCZF203mfj2cmgBOPJ4LCLW9I-aNajOq7XtILdg5t-M"; 
 
-const video = document.getElementById('camera-preview');
-const canvas = document.getElementById('capture-canvas');
-const resultDiv = document.getElementById('commentary-result');
-
-// 1. カメラの起動
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    video.srcObject = stream;
-    video.play();
-  } catch (err) {
-    console.error("カメラの起動に失敗しました: ", err);
-    alert("カメラを許可してください");
+function callGemini(promptText, base64Image = null) {
+  const API_KEY = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+  
+  if (!API_KEY) {
+    throw new Error("GEMINI_API_KEY が設定されていません。");
   }
-}
 
-// 2. 画像の撮影と送信
-async function captureAndSend() {
-  // Canvasに現在の映像を書き込む
-  const context = canvas.getContext('2d');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  let parts = [];
+  if (base64Image) {
+    parts.push({
+      inline_data: {
+        mime_type: "image/jpeg",
+        data: base64Image
+      }
+    });
+  }
+  parts.push({ text: promptText });
 
-  // 画像をBase64文字列（JPEG）に変換
-  // data:image/jpeg;base64,xxxx... の形式
-  const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
-
-  resultDiv.innerText = "実況者が思考中...";
-
-  const payload = {
-    name: "福田", // 必要に応じて入力欄から取得
-    goal: "GAS開発", 
-    reason: "集中力チェック",
-    currentImage: {
-      mime_type: "image/jpeg",
-      data: base64Image
-    }
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + API_KEY;
+  
+  const payload = { 
+    contents: [{ parts: parts }] 
   };
 
-  try {
-    // GASへPOSTリクエストを送信
-    const response = await fetch(GAS_WEB_APP_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
 
-    const result = await response.json();
+  const response = UrlFetchApp.fetch(url, options);
+  const json = JSON.parse(response.getContentText());
+
+  if (response.getResponseCode() !== 200) {
+    throw new Error(`API Error (${response.getResponseCode()}): ${json.error ? json.error.message : 'Unknown Error'}`);
+  }
+  
+  return json.candidates[0];
+}
+
+/**
+ * スプレッドシートにログを保存する関数
+ */
+function saveToSpreadsheet(userName, userGoal, reason, commentary) {
+  try {
+    const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return; // シートが見つからなければスキップ
     
-    if (result.status === "success") {
-      // Geminiの実況文を表示
-      resultDiv.innerText = result.commentary;
-    } else {
-      resultDiv.innerText = "エラー: " + result.message;
+    let sheet = ss.getSheetByName("実況ログ");
+    // シートがなければ作成
+    if (!sheet) {
+      sheet = ss.insertSheet("実況ログ");
+      sheet.appendRow(["日時", "名前", "目標", "検知理由", "実況内容"]);
     }
-  } catch (error) {
-    console.error("送信エラー:", error);
-    resultDiv.innerText = "通信に失敗しました。";
+    
+    // データの追加
+    const now = new Date();
+    const formattedDate = Utilities.formatDate(now, "JST", "yyyy/MM/dd HH:mm:ss");
+    sheet.appendRow([formattedDate, userName, userGoal, reason, commentary]);
+  } catch (e) {
+    console.error("スプレッドシート保存エラー: " + e.message);
   }
 }
 
-// 初期化
-startCamera();
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const userName = data.name || "選手";
+    const userGoal = data.goal || "作業";
+    const triggerReason = data.reason || "集中力の変化";
+    
+    const prompt = `あなたは熱血かつユーモア溢れる「作業見守り実況者」です。
+現在、${userGoal}に挑む${userName}選手を全力で応援しています。
+
+# 今起きたこと
+システムが「${triggerReason}」を検知しました。
+
+# 指示
+画像から${userName}選手の様子を読み取り、状況をズバッと指摘しつつ、やる気を爆上げする「魂の一言」を実況してください。
+
+# 制約事項
+* 文字数は【30文字〜60文字】を厳守。
+* 出力は「実況文のみ」とすること。前置きや解説は一切不要。
+* 「変化なし」「判定不能」は絶対に禁止。必ず何か言い放ってください。
+* 絵文字・顔文字は禁止。
+* キャラクター：親しみやすく、少し強引だけど愛のある熱血コーチ風。
+
+# 実況例
+「おいおい${userName}選手！スマホに吸い込まれそうな顔になってるぞ！${userGoal}の頂上はまだ先だ、今すぐ視線を戻してギアを上げろ！」`;
+
+    const geminiResponse = callGemini(prompt, data.currentImage.data);
+    const result = geminiResponse.content; 
+    
+    // 実況文を取得
+    const generatedText = result.parts[0].text.trim();
+
+    // --- スプレッドシートに保存 ---
+    saveToSpreadsheet(userName, userGoal, triggerReason, generatedText);
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: err.message,
+      parts: [{ text: "エラーが発生しました。" }] 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+function forceAuth() {
+  SpreadsheetApp.getActiveSpreadsheet();
+  DriveApp.getRootFolder();
+}
